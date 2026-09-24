@@ -301,11 +301,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/kyo-hei/Desktop/WorkManagementApi/WorkManagementApi/WorkManagementApi.vbproj",
+      "projectUniqueName": "/Users/kyo-hei/Desktop/WorkManagementApi/WorkManagementApi.vbproj",
       "projectName": "WorkManagementApi",
-      "projectPath": "/Users/kyo-hei/Desktop/WorkManagementApi/WorkManagementApi/WorkManagementApi.vbproj",
+      "projectPath": "/Users/kyo-hei/Desktop/WorkManagementApi/WorkManagementApi.vbproj",
       "packagesPath": "/Users/kyo-hei/.nuget/packages/",
-      "outputPath": "/Users/kyo-hei/Desktop/WorkManagementApi/WorkManagementApi/obj/",
+      "outputPath": "/Users/kyo-hei/Desktop/WorkManagementApi/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/kyo-hei/.nuget/NuGet/NuGet.Config"
