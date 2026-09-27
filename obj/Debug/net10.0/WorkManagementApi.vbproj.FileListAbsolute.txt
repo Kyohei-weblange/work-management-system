@@ -43,7 +43,6 @@
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/rjsmrazor.dswa.cache.json
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/scopedcss/bundle/WorkManagementApi.styles.css
-/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/f3suj0vokt-{0}-8w29yxzzrf-8w29yxzzrf.gz
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/staticwebassets.build.json
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/staticwebassets.build.json.cache
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/staticwebassets.development.json
@@ -56,5 +55,6 @@
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/WorkManagementApi.genruntimeconfig.cache
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/ref/WorkManagementApi.dll
 /Users/kyo-hei/Desktop/WorkManagementApi/bin/Debug/net10.0/BCrypt-Net-Next.dll
-/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/zsv5antc1o-{0}-t3t3ypn7ds-t3t3ypn7ds.gz
-/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/2tw1bnym1l-{0}-c6xyx3ee0s-c6xyx3ee0s.gz
+/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/2tw1bnym1l-{0}-aoa8005chl-aoa8005chl.gz
+/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/f3suj0vokt-{0}-nkjfddbiv1-nkjfddbiv1.gz
+/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/zsv5antc1o-{0}-pxjz3awlrq-pxjz3awlrq.gz
