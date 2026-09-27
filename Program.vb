@@ -10,6 +10,22 @@ Public Class LoginRequest
     Public Property Password As String
 End Class
 
+Public Class ConstructionDto
+    Public Property ConstructionId As Integer
+    Public Property ConstructionCode As String
+    Public Property ConstructionName As String
+End Class
+
+Public Class WorkRecordRequest
+    Public Property UserId As Integer
+    Public Property WorkDate As String
+    Public Property StartTime As String
+    Public Property EndTime As String
+    Public Property OvertimeHours As Double
+    Public Property ConstructionId As Integer
+    Public Property Remarks As String
+End Class
+
 Module Program
     Sub Main(args As String())
         Dim builder = WebApplication.CreateBuilder(args)
@@ -64,6 +80,13 @@ Module Program
                 command.Parameters.AddWithValue("@hash", hash)
                 command.ExecuteNonQuery()
             End If
+
+            command.CommandText = "SELECT COUNT(*) FROM ConstructionNumbers"
+            Dim countNum As Integer = Convert.ToInt32(command.ExecuteScalar())
+            If countNum = 0 Then
+                command.commandText = "INSERT INTO ConstructionNumbers (ConstructionCode, ConstructionName, IsActive) VALUES ('C101', 'A社工場耐震改修工事', 1)"
+                command.ExecuteNonQuery()
+            End If
         End Using
 
         app.MapGet("/api/health", Function() As IResult
@@ -97,6 +120,76 @@ Module Program
                     Dim response = New With {Key .message = "ログイン失敗: ユーザー名またはパスワードが正しくありません。"}
                     Return Results.Json(response, statusCode:=401)
                 End If
+            End Using
+        End Function)
+
+        ' 工事番号一覧取得API
+        app.MapGet("/api/constructions", Function() As IResult
+            Dim constructions As New List(Of ConstructionDto)
+            Using connection As New SqliteConnection(connectionString)
+                connection.Open()
+                Dim command = connection.CreateCommand()
+                command.CommandText = "
+                    SELECT
+                        ConstructionId,
+                        ConstructionCode,
+                        ConstructionName
+                    FROM
+                        ConstructionNumbers
+                    WHERE
+                        IsActive = 1
+                "
+                Using reader = command.ExecuteReader()
+                    While reader.Read()
+                        constructions.Add(New ConstructionDto With {
+                            .ConstructionId = reader.GetInt32(0),
+                            .ConstructionCode = reader.GetString(1),
+                            .ConstructionName = reader.GetString(2)
+                        })
+                    End While
+                End Using
+            End Using
+            Return Results.Json(constructions)
+        End Function)
+
+        ' 勤務データ登録API
+        app.MapPost("/api/work-records", Function(req As WorkRecordRequest) As IResult
+            Using connection As New SqliteConnection(connectionString)
+                connection.Open()
+                Dim command = connection.CreateCommand()
+                command.CommandText = "
+                    INSERT INTO WorkRecords (
+                        UserId,
+                        WorkDate,
+                        StartTime,
+                        EndTime,
+                        OvertimeHours,
+                        ConstructionId,
+                        Remarks
+                    )
+                    VALUES (
+                        @userId,
+                        @workDate,
+                        @startTime,
+                        @endTime,
+                        @overtimeHours,
+                        @constructionId,
+                        @remarks
+                    )
+                "
+                command.Parameters.AddWithValue("@userId", req.UserId)
+                command.Parameters.AddWithValue("@workDate", req.WorkDate)
+                command.Parameters.AddWithValue("@startTime", req.StartTime)
+                command.Parameters.AddWithValue("@endTime", req.EndTime)
+                command.Parameters.AddWithValue("@overtimeHours", req.OvertimeHours)
+                command.Parameters.AddWithValue("@constructionId", req.ConstructionId)
+                command.Parameters.AddWithValue("@remarks", req.Remarks)
+                Try
+                    command.ExecuteNonQuery()
+                    Return Results.Json(New With {Key .message = "勤務データを登録しました。"})
+                Catch ex As Exception
+                    Return Results.BadRequest(New With {Key .message = "登録失敗:" & ex.Message})
+                End Try
             End Using
         End Function)
 
