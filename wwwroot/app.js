@@ -1,37 +1,39 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const statusEl = document.getElementById("status");
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const usernameInput = document.getElementById("username").value;
+  const passwordInput = document.getElementById("password").value;
+  const messageDiv = document.getElementById("message");
+
+  messageDiv.style.display = "none";
+  messageDiv.className = "";
 
   try {
-    const response = await fetch("/api/health");
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userName: usernameInput,
+        password: passwordInput,
+      }),
+    });
 
-    if (!response.ok) {
-      throw new Error(`HTTPエラー ステータス: ${response.status}`);
+    const data = await response.json();
+
+    if (response.ok) {
+      messageDiv.textContent = `${data.message} (ようこそ ${data.userName} さん)`;
+      messageDiv.className = "success";
+      messageDiv.style.display = "block";
+    } else {
+      messageDiv.textContent = data.message || "ログインに失敗しました。";
+      messageDiv.className = "error";
+      messageDiv.style.display = "block";
     }
-
-    // テキストを取得し、トリム（前後の空白除去）
-    const text = (await response.text()).trim();
-
-    if (!text) {
-      statusEl.textContent =
-        "APIから空のレスポンスが返されました（Program.vbの戻り値を確認してください）";
-      statusEl.style.color = "#ed6c02"; // 警告時のオレンジ色
-      return;
-    }
-
-    try {
-      // JSONパースを試行
-      const data = JSON.parse(text);
-      const message = data.message || data.Message || text;
-      statusEl.textContent = message;
-    } catch {
-      // テキストの場合はそのまま表示
-      statusEl.textContent = text;
-    }
-
-    statusEl.style.color = "#2e7d32"; // 成功時の緑色
   } catch (error) {
-    console.error("通信詳細エラー:", error);
-    statusEl.textContent = `API通信エラー: ${error.message}`;
-    statusEl.style.color = "#c62828"; // エラー時の赤色
+    messageDiv.textContent = "通信エラーが発生しました。";
+    messageDiv.className = "error";
+    messageDiv.style.display = "block";
   }
 });
