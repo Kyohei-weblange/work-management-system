@@ -26,6 +26,11 @@ Public Class WorkRecordRequest
     Public Property Remarks As String
 End Class
 
+Public Class CopyPrevious
+    Public Property UserId As Integer
+    Public Property TargetYearMonth As String
+End Class
+
 Module Program
     Sub Main(args As String())
         Dim builder = WebApplication.CreateBuilder(args)
@@ -189,6 +194,46 @@ Module Program
                     Return Results.Json(New With {Key .message = "勤務データを登録しました。"})
                 Catch ex As Exception
                     Return Results.BadRequest(New With {Key .message = "登録失敗:" & ex.Message})
+                End Try
+            End Using
+        End Function)
+
+        ' 前月の勤務内容をコピー
+        app.MapPost("/api/work-records/copy-previous", Function(req As CopyPrevious) As IResult
+
+            Dim userId = req.UserId
+            Dim targetYearMonth = req.TargetYearMonth
+            Dim targetDate As DateTime = DateTime.Parse(targetYearMonth & "-1")
+            Dim prevMonthStr As String = targetDate.AddMonths(-1).ToString("yyyy-MM")
+            Dim targetMonthPattern As String = targetYearMonth & "%"
+
+            Using connection As New SqliteConnection(connectionString)
+                connection.Open()
+                Dim command = connection.CreateCommand()
+                command.CommandText = "
+                    DELETE FROM WorkRecords WHERE UserId = @userId AND WorkDate LIKE @targetMonthPattern;
+                    INSERT INTO WorkRecords (UserId, WorkDate, StartTime, EndTime, OvertimeHours, ConstructionId, Remarks)
+                    SELECT
+                        UserId,
+                        replace(WorkDate, @prevMonthStr, @targetYearMonth) AS WorkDate,
+                        StartTime,
+                        EndTime,
+                        OvertimeHours,
+                        ConstructionId,
+                        Remarks
+                    FROM WorkRecords
+                    WHERE UserId = @userId AND WorkDate LIKE @prevMonthPattern
+                "
+                command.Parameters.AddWithValue("@userId", userId)
+                command.Parameters.AddWithValue("@prevMonthStr", prevMonthStr)
+                command.Parameters.AddWithValue("@targetYearMonth", targetYearMonth)
+                command.Parameters.AddWithValue("@prevMonthPattern", prevMonthStr & "%")
+                command.Parameters.AddWithValue("@targetMonthPattern", targetMonthPattern)
+                Try
+                    Dim copiedCount As Integer = command.ExecuteNonQuery()
+                    Return Results.Json(New With {Key .message = "成功しました。", .copiedCount = copiedCount})
+                Catch ex As Exception
+                    Return Results.BadRequest(New With {Key .message = "失敗しました。" & ex.Message})
                 End Try
             End Using
         End Function)
