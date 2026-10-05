@@ -1,9 +1,14 @@
 let currentUser = null;
 
-// 今日の日付を初期値としてセット
+// 今日の日付および当月を初期値としてセット
 const workDateEl = document.getElementById("work-date");
 if (workDateEl) {
   workDateEl.value = new Date().toISOString().substring(0, 10);
+}
+
+const summaryYearMonthEl = document.getElementById("summary-year-month");
+if (summaryYearMonthEl) {
+  summaryYearMonthEl.value = new Date().toISOString().substring(0, 7);
 }
 
 // ログイン処理
@@ -66,6 +71,11 @@ function switchTab(tabId) {
 
   if (window.event && window.event.target) {
     window.event.target.classList.add("active");
+  }
+
+  // 集計タブが開かれたら自動で集計取得
+  if (tabId === "tab-summary") {
+    fetchAndRenderSummary();
   }
 }
 
@@ -142,4 +152,61 @@ if (workRecordForm) {
       msgDiv.innerHTML = `<div class="alert alert-danger">登録通信エラーが発生しました。</div>`;
     }
   });
+}
+
+// 集計サマリー表示API呼び出し処理
+async function fetchAndRenderSummary() {
+  const yearMonthInput = document.getElementById("summary-year-month");
+  const msgDiv = document.getElementById("summary-message");
+  if (!yearMonthInput) return;
+
+  const yearMonth = yearMonthInput.value;
+  if (!yearMonth) {
+    msgDiv.innerHTML = `<div class="alert alert-danger">年月を選択してください。</div>`;
+    return;
+  }
+
+  const userId = currentUser ? currentUser.userId || 1 : 1;
+
+  try {
+    const response = await fetch(`/api/work-records/summary?userId=${userId}&yearMonth=${yearMonth}`);
+    if (!response.ok) {
+      throw new Error("集計データの取得に失敗しました。");
+    }
+
+    const summary = await response.json();
+
+    // 出勤日数・残業時間の表示更新
+    document.getElementById("total-work-days").textContent = summary.totalWorkDays || 0;
+    document.getElementById("total-overtime-hours").textContent = summary.totalOvertimeHours || 0;
+
+    // 工事別内訳テーブル更新
+    const tbody = document.getElementById("construction-breakdown-body");
+    tbody.innerHTML = "";
+
+    if (summary.constructionBreakdown && summary.constructionBreakdown.length > 0) {
+      summary.constructionBreakdown.forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid #dee2e6";
+        tr.innerHTML = `
+          <td style="padding: 8px;">${item.constructionCode || "-"}</td>
+          <td style="padding: 8px;">${item.constructionName || "-"}</td>
+          <td style="padding: 8px; text-align: right;">${item.totalHours || 0} 時間</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" style="padding: 8px; text-align: center;">指定した年月のデータが存在しません。</td></tr>';
+    }
+    msgDiv.innerHTML = "";
+  } catch (err) {
+    console.error("集計取得エラー:", err);
+    msgDiv.innerHTML = `<div class="alert alert-danger">集計データの読み込みに失敗しました。</div>`;
+  }
+}
+
+// 集計ボタン押下イベント listener
+const loadSummaryBtn = document.getElementById("load-summary-btn");
+if (loadSummaryBtn) {
+  loadSummaryBtn.addEventListener("click", fetchAndRenderSummary);
 }
