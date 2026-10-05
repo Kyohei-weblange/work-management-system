@@ -14,6 +14,7 @@ Public Class ConstructionDto
     Public Property ConstructionId As Integer
     Public Property ConstructionCode As String
     Public Property ConstructionName As String
+    Public Property TotalHours As Double
 End Class
 
 Public Class WorkRecordRequest
@@ -236,6 +237,73 @@ Module Program
                     Return Results.BadRequest(New With {Key .message = "失敗しました。" & ex.Message})
                 End Try
             End Using
+        End Function)
+
+        app.MapGet("/api/work-records/summary", Function(userId As Integer, yearMonth As String) As IResult
+            Dim totalWorkDays As Integer = 0
+            Dim totalOvertimeHours As Double = 0.0
+            Dim yearMonthPattern As String = yearMonth & "%"
+            Dim constructionHours As New Dictionary(Of Integer, Double)
+            Dim breakdownList As New List(Of ConstructionDto)
+
+            Using connection As New SqliteConnection(connectionString)
+                connection.Open()
+                Dim command = connection.CreateCommand()
+                command.CommandText = "
+                    SELECT
+                        WorkDate,
+                        OvertimeHours,
+                        ConstructionId
+                    FROM
+                        WorkRecords
+                    WHERE
+                        UserId = @userId
+                    AND
+                        WorkDate LIKE @yearMonthPattern
+                "
+                command.Parameters.AddWithValue("@userId", userId)
+                command.Parameters.AddWithValue("@yearMonthPattern", yearMonthPattern)
+                Using reader = command.ExecuteReader()
+                    While reader.Read()
+                        totalWorkDays += 1
+                        totalOvertimeHours += reader.GetDouble(1)
+                        Dim overtime As Double = reader.GetDouble(1)
+                        If Not reader.IsDBNull(2) Then
+                            Dim constructionId As Integer = reader.GetInt32(2)
+                            If constructionHours.ContainsKey(ConstructionId) Then
+                                constructionHours(ConstructionId) += overtime
+                            Else
+                                constructionHours(ConstructionId) = overtime
+                            End If
+                        End If
+                    End While
+                End Using
+
+                command.Parameters.Clear()
+                command.CommandText = "
+                    SELECT ConstructionId, ConstructionCode, ConstructionName
+                    FROM ConstructionNumbers
+                    WHERE IsActive = 1
+                "
+                Using reader = command.ExecuteReader()
+                    While reader.Read()
+                        Dim cId As Integer = reader.GetInt32(0)
+                        Dim cCode As String = reader.GetString(1)
+                        Dim cName As String = reader.GetString(2)
+                        Dim hours As Double = 0.0
+                        If constructionHours.ContainsKey(cId) Then
+                            hours = constructionHours(cId)
+                        End If
+                        breakdownList.Add(New ConstructionDto With {
+                            .ConstructionId = cId,
+                            .ConstructionCode = cCode,
+                            .ConstructionName = cName,
+                            .TotalHours = hours
+                        })
+                    End While
+                End Using
+            End Using
+            Return Results.Json(New With { Key .totalWorkDays = totalWorkDays, Key .totalOvertimeHours = totalOvertimeHours, Key .constructionBreakdown = breakdownList})
         End Function)
 
         app.Run()
