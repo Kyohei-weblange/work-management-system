@@ -32,15 +32,72 @@ Public Class CopyPrevious
     Public Property TargetYearMonth As String
 End Class
 
+Public Class WorkRecordDetailDto
+    Public Property WorkDate As String
+    Public Property StartTime As String
+    Public Property EndTime As String
+    Public Property OvertimeHours As Double
+    Public Property ConstructionCode As String
+    Public Property ConstructionName As String
+    Public Property Note As String
+End Class
+
+Public Class WorkRecordService
+    Private ReadOnly _connectionString As String
+    Public Sub New(connectionString As String)
+        _connectionString = connectionString
+    End Sub
+    Public Function GetMonthlyRecords(userId As Integer, yearMonth As String) As List(Of WorkRecordDetailDto)
+    Dim yearMonthDate As String = yearMonth & "%"
+    Dim result As New List(Of WorkRecordDetailDto)()
+    Using connection As New SqliteConnection(_connectionString)
+        connection.Open()
+        Dim command = connection.CreateCommand()
+        command.CommandText = "
+            SELECT
+                WorkDate,
+                StartTime,
+                EndTime,
+                OvertimeHours,
+                ConstructionCode,
+                ConstructionName
+            FROM
+                WorkRecords LEFT JOIN ConstructionNumbers ON WorkRecords.ConstructionId = ConstructionNumbers.ConstructionId
+            WHERE
+                WorkRecords.UserId = @userId AND WorkRecords.WorkDate LIKE @yearMonthDate ORDER BY WorkRecords.WorkDate ASC
+        "
+        command.Parameters.AddWithValue("@userId", userId)
+        command.Parameters.AddWithValue("@yearMonthDate", yearMonthDate)
+        Using reader = command.ExecuteReader()
+            While reader.Read()
+                result.Add(New WorkRecordDetailDto With {
+                    .WorkDate  = reader.GetString(0),
+                    .StartTime = reader.GetString(1),
+                    .EndTime = reader.GetString(2),
+                    .OvertimeHours = reader.GetDouble(3),
+                    .ConstructionCode = If(reader.IsDBNull(4), "", reader.GetString(4)),
+                    .ConstructionName = If(reader.IsDBNull(5), "", reader.GetString(5))
+                })
+            End While
+        End Using
+    End Using
+    Return result
+    End Function
+End Class
+
 Module Program
     Sub Main(args As String())
+
         Dim builder = WebApplication.CreateBuilder(args)
+        Dim connectionString As String = "Data Source = work_management.db"
+        builder.Services.AddScoped(Of WorkRecordService)(Function(sp)
+            Return New WorkRecordService(connectionString)
+        End Function)
         Dim app = builder.Build()
 
         app.UseDefaultFiles()
         app.UseStaticFiles()
 
-        Dim connectionString As String = "Data Source = work_management.db"
 
         ' DB初期化処理（起動時に1回だけ自動実行）
         Using connection As New SqliteConnection(connectionString)
@@ -304,6 +361,19 @@ Module Program
                 End Using
             End Using
             Return Results.Json(New With { Key .totalWorkDays = totalWorkDays, Key .totalOvertimeHours = totalOvertimeHours, Key .constructionBreakdown = breakdownList})
+        End Function)
+
+        app.MapGet("/api/work-records/export-csv", Function(userId As Integer, yearMonth As String, context As HttpContext, service As WorkRecordService) As IResult
+            context.Response.Headers("Content-Disposition") = $"attachment; filename=""work_records_{yearMonth}.csv"""
+            Dim records = service.GetMonthlyRecords(userId, yearMonth)
+            Dim csvLines As New List(Of String)()
+            csvLines.Add("日付,出勤時間,退勤時間,残業時間,工事コード,工事名")
+            For Each item In records
+                Dim line As String = $"{item.WorkDate},{item.StartTime},{item.EndTime},{item.OvertimeHours},{item.ConstructionCode},{item.ConstructionName}"
+                csvLines.Add(line)
+            Next
+            Dim csvData As String = String.Join(vbCrlf, csvLines)
+            Return Results.Text(csvData, contentType:="text/csv; charset=utf-8", System.Text.Encoding.UTF8)
         End Function)
 
         app.Run()
