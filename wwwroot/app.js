@@ -169,7 +169,9 @@ async function fetchAndRenderSummary() {
   const userId = currentUser ? currentUser.userId || 1 : 1;
 
   try {
-    const response = await fetch(`/api/work-records/summary?userId=${userId}&yearMonth=${yearMonth}`);
+    const response = await fetch(
+      `/api/work-records/summary?userId=${userId}&yearMonth=${yearMonth}`,
+    );
     if (!response.ok) {
       throw new Error("集計データの取得に失敗しました。");
     }
@@ -177,14 +179,19 @@ async function fetchAndRenderSummary() {
     const summary = await response.json();
 
     // 出勤日数・残業時間の表示更新
-    document.getElementById("total-work-days").textContent = summary.totalWorkDays || 0;
-    document.getElementById("total-overtime-hours").textContent = summary.totalOvertimeHours || 0;
+    document.getElementById("total-work-days").textContent =
+      summary.totalWorkDays || 0;
+    document.getElementById("total-overtime-hours").textContent =
+      summary.totalOvertimeHours || 0;
 
     // 工事別内訳テーブル更新
     const tbody = document.getElementById("construction-breakdown-body");
     tbody.innerHTML = "";
 
-    if (summary.constructionBreakdown && summary.constructionBreakdown.length > 0) {
+    if (
+      summary.constructionBreakdown &&
+      summary.constructionBreakdown.length > 0
+    ) {
       summary.constructionBreakdown.forEach((item) => {
         const tr = document.createElement("tr");
         tr.style.borderBottom = "1px solid #dee2e6";
@@ -196,7 +203,8 @@ async function fetchAndRenderSummary() {
         tbody.appendChild(tr);
       });
     } else {
-      tbody.innerHTML = '<tr><td colspan="3" style="padding: 8px; text-align: center;">指定した年月のデータが存在しません。</td></tr>';
+      tbody.innerHTML =
+        '<tr><td colspan="3" style="padding: 8px; text-align: center;">指定した年月のデータが存在しません。</td></tr>';
     }
     msgDiv.innerHTML = "";
   } catch (err) {
@@ -209,4 +217,37 @@ async function fetchAndRenderSummary() {
 const loadSummaryBtn = document.getElementById("load-summary-btn");
 if (loadSummaryBtn) {
   loadSummaryBtn.addEventListener("click", fetchAndRenderSummary);
+}
+
+// CSVダウンロード処理
+async function downloadCsv(userId, yearMonth) {
+  try {
+    const response = await fetch(
+      `/api/work-records/export-csv?userId=${userId}&yearMonth=${yearMonth}`,
+    );
+
+    if (!response.ok) {
+      throw new Error("CSVの取得に失敗しました");
+    }
+
+    // レスポンスを Blob (バイナリデータ) として取得
+    const blob = await response.blob();
+
+    // Blobから一時的なオブジェクトURLを生成
+    const url = window.URL.createObjectURL(blob);
+
+    // 疑似的な <a> タグを作成してダウンロードを発火
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `work_records_${yearMonth}.csv`;
+    document.body.appendChild(a);
+    a.click();
+
+    // 後処理（要素削除とURL破棄）
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("CSVダウンロードエラー:", error);
+    alert("CSVのダウンロードに失敗しました。");
+  }
 }
