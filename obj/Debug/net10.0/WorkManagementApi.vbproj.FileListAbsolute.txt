@@ -56,5 +56,5 @@
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/ref/WorkManagementApi.dll
 /Users/kyo-hei/Desktop/WorkManagementApi/bin/Debug/net10.0/BCrypt-Net-Next.dll
 /Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/f3suj0vokt-{0}-nkjfddbiv1-nkjfddbiv1.gz
-/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/2tw1bnym1l-{0}-tybwhz978w-tybwhz978w.gz
-/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/zsv5antc1o-{0}-qjdx5pa6x0-qjdx5pa6x0.gz
+/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/2tw1bnym1l-{0}-q6wzohg7za-q6wzohg7za.gz
+/Users/kyo-hei/Desktop/WorkManagementApi/obj/Debug/net10.0/compressed/zsv5antc1o-{0}-gu1ufl18dv-gu1ufl18dv.gz
