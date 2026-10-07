@@ -219,35 +219,39 @@ if (loadSummaryBtn) {
   loadSummaryBtn.addEventListener("click", fetchAndRenderSummary);
 }
 
-// CSVダウンロード処理
-async function downloadCsv(userId, yearMonth) {
-  try {
-    const response = await fetch(
-      `/api/work-records/export-csv?userId=${userId}&yearMonth=${yearMonth}`,
-    );
-
-    if (!response.ok) {
-      throw new Error("CSVの取得に失敗しました");
+/// CSV出力ボタンのクリックイベント接続
+document
+  .getElementById("export-csv-btn")
+  ?.addEventListener("click", async () => {
+    const yearMonth = document.getElementById("summary-year-month")?.value;
+    if (!yearMonth) {
+      alert("対象年月を選択してください。");
+      return;
     }
 
-    // レスポンスを Blob (バイナリデータ) として取得
-    const blob = await response.blob();
+    // ログイン中のユーザーID（セッションや変数から取得。初期テストは1固定）
+    const userId = 1;
 
-    // Blobから一時的なオブジェクトURLを生成
-    const url = window.URL.createObjectURL(blob);
+    try {
+      const response = await fetch(
+        `/api/work-records/export-csv?userId=${userId}&yearMonth=${yearMonth}`,
+      );
+      if (!response.ok) {
+        throw new Error("CSVの取得に失敗しました。");
+      }
 
-    // 疑似的な <a> タグを作成してダウンロードを発火
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `work_records_${yearMonth}.csv`;
-    document.body.appendChild(a);
-    a.click();
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `work_records_${yearMonth}.csv`;
+      document.body.appendChild(a);
+      a.click();
 
-    // 後処理（要素削除とURL破棄）
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("CSVダウンロードエラー:", error);
-    alert("CSVのダウンロードに失敗しました。");
-  }
-}
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("CSVダウンロードエラー:", error);
+      alert("CSVのダウンロードに失敗しました。");
+    }
+  });
