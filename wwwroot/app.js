@@ -198,13 +198,14 @@ async function fetchAndRenderSummary() {
         tr.innerHTML = `
           <td style="padding: 8px;">${item.constructionCode || "-"}</td>
           <td style="padding: 8px;">${item.constructionName || "-"}</td>
-          <td style="padding: 8px; text-align: right;">${item.totalHours || 0} 時間</td>
+          <td style="padding: 8px; text-align: right; font-weight: bold;">${item.totalHours || 0} 時間</td>
+          <td style="padding: 8px; text-align: right; color: #dc3545;">${item.overtimeHours || 0} 時間</td>
         `;
         tbody.appendChild(tr);
       });
     } else {
       tbody.innerHTML =
-        '<tr><td colspan="3" style="padding: 8px; text-align: center;">指定した年月のデータが存在しません。</td></tr>';
+        '<tr><td colspan="4" style="padding: 8px; text-align: center;">指定した年月のデータが存在しません。</td></tr>';
     }
     msgDiv.innerHTML = "";
   } catch (err) {
@@ -219,7 +220,7 @@ if (loadSummaryBtn) {
   loadSummaryBtn.addEventListener("click", fetchAndRenderSummary);
 }
 
-/// CSV出力ボタンのクリックイベント接続
+// CSV出力ボタンのクリックイベント接続
 document
   .getElementById("export-csv-btn")
   ?.addEventListener("click", async () => {
@@ -230,7 +231,7 @@ document
     }
 
     // ログイン中のユーザーID（セッションや変数から取得。初期テストは1固定）
-    const userId = 1;
+    const userId = currentUser ? currentUser.userId || 1 : 1;
 
     try {
       const response = await fetch(

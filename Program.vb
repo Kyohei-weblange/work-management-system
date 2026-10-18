@@ -15,6 +15,7 @@ Public Class ConstructionDto
     Public Property ConstructionCode As String
     Public Property ConstructionName As String
     Public Property TotalHours As Double
+    Public Property OvertimeHours As Double
 End Class
 
 Public Class WorkRecordRequest
@@ -302,6 +303,7 @@ Module Program
             Dim yearMonthPattern As String = yearMonth & "%"
             Dim constructionHours As New Dictionary(Of Integer, Double)
             Dim breakdownList As New List(Of ConstructionDto)
+            Dim constructionOvertimeHours As New Dictionary(Of Integer, Double)
 
             Using connection As New SqliteConnection(connectionString)
                 connection.Open()
@@ -310,7 +312,9 @@ Module Program
                     SELECT
                         WorkDate,
                         OvertimeHours,
-                        ConstructionId
+                        ConstructionId,
+                        StartTime,
+                        EndTime
                     FROM
                         WorkRecords
                     WHERE
@@ -325,12 +329,20 @@ Module Program
                         totalWorkDays += 1
                         totalOvertimeHours += reader.GetDouble(1)
                         Dim overtime As Double = reader.GetDouble(1)
+                        Dim startTime = reader.GetString(3)
+                        Dim endTime = reader.GetString(4)
                         If Not reader.IsDBNull(2) Then
                             Dim constructionId As Integer = reader.GetInt32(2)
-                            If constructionHours.ContainsKey(ConstructionId) Then
-                                constructionHours(ConstructionId) += overtime
+                            Dim workTime As Double = (TimeSpan.Parse(endTime) - TimeSpan.Parse(startTime)).TotalHours - 1.0 + overtime
+                            If constructionHours.ContainsKey(constructionId) Then
+                                constructionHours(constructionId) += workTime
                             Else
-                                constructionHours(ConstructionId) = overtime
+                                constructionHours(constructionId) = workTime
+                            End If
+                            If constructionOvertimeHours.ContainsKey(constructionId) Then
+                                constructionOvertimeHours(constructionId) += overTime
+                            Else
+                                constructionOvertimeHours(constructionId) = overTime
                             End If
                         End If
                     End While
@@ -348,14 +360,19 @@ Module Program
                         Dim cCode As String = reader.GetString(1)
                         Dim cName As String = reader.GetString(2)
                         Dim hours As Double = 0.0
+                        Dim overtimeHours As Double = 0.0
                         If constructionHours.ContainsKey(cId) Then
                             hours = constructionHours(cId)
+                        End If
+                        If constructionOvertimeHours.ContainsKey(cId) Then
+                            overtimeHours = constructionOvertimeHours(cId)
                         End If
                         breakdownList.Add(New ConstructionDto With {
                             .ConstructionId = cId,
                             .ConstructionCode = cCode,
                             .ConstructionName = cName,
-                            .TotalHours = hours
+                            .TotalHours = hours,
+                            .OvertimeHours = overtimeHours
                         })
                     End While
                 End Using

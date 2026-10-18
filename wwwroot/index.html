@@ -109,12 +109,7 @@
             <button type="button" id="load-summary-btn" style="width: auto">
               集計表示
             </button>
-            <!-- ★追加：CSV出力ボタン -->
-            <button
-              type="button"
-              id="export-csv-btn"
-              style="width: auto; background-color: #28a745; color: #fff"
-            >
+            <button type="button" id="export-csv-btn" style="width: auto; background-color: #28a745; color: #fff;">
               CSV出力
             </button>
           </div>
@@ -180,12 +175,13 @@
               >
                 <th style="padding: 8px; text-align: left">工事コード</th>
                 <th style="padding: 8px; text-align: left">工事名</th>
-                <th style="padding: 8px; text-align: right">合計時間</th>
+                <th style="padding: 8px; text-align: right">総労働時間</th>
+                <th style="padding: 8px; text-align: right">（内残業時間）</th>
               </tr>
             </thead>
             <tbody id="construction-breakdown-body">
               <tr>
-                <td colspan="3" style="padding: 8px; text-align: center">
+                <td colspan="4" style="padding: 8px; text-align: center">
                   対象年月を選択して集計を表示してください。
                 </td>
               </tr>
