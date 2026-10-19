@@ -43,6 +43,12 @@ Public Class WorkRecordDetailDto
     Public Property Note As String
 End Class
 
+Public Class ClockInOut
+    Public Property UserId As Integer
+    Public Property ClockType As String
+    Public Property Timestamp As String
+End Class
+
 Public Class WorkRecordService
     Private ReadOnly _connectionString As String
     Public Sub New(connectionString As String)
@@ -378,6 +384,60 @@ Module Program
                 End Using
             End Using
             Return Results.Json(New With { Key .totalWorkDays = totalWorkDays, Key .totalOvertimeHours = totalOvertimeHours, Key .constructionBreakdown = breakdownList})
+        End Function)
+
+        app.MapPost("/api/clock-in-out", Function(req As ClockInOut) As IResult
+            Dim userId = req.UserId
+            Dim clockType = req.ClockType
+            Dim dt As DateTime = DateTime.Parse(req.Timestamp)
+            Dim workDate As String = dt.ToString("yyyy-MM-dd")
+            Dim clockTime As String = dt.ToString("HH:mm")
+            Using connection As New SqliteConnection(connectionString)
+                connection.Open()
+                Dim command = connection.CreateCommand()
+                command.CommandText = "
+                    SELECT
+                        COUNT(*)
+                    FROM
+                        WorkRecords
+                    WHERE UserId = @userId AND WorkDate = @workDate
+                "
+                command.Parameters.AddWithValue("@userId", userId)
+                command.Parameters.AddWithValue("@workDate", workDate)
+                ' Dim result = command.ExecuteScalar()
+                Dim count As Integer = Convert.ToInt32(command.ExecuteScalar())
+                command.Parameters.Clear()
+                If (count = 0 AndAlso clockType = "IN") Then
+                    command.CommandText = "
+                        INSERT INTO WorkRecords (UserId, WorkDate, StartTime) VALUES (@userId, @workDate, @startTime)
+                    "
+                    command.Parameters.AddWithValue("@userId", userId)
+                    command.Parameters.AddWithValue("@workDate", workDate)
+                    command.Parameters.AddWithValue("@startTime", clockTime)
+                End If
+                If (count > 0 AndAlso clockType = "IN") Then
+                    command.CommandText = "
+                        UPDATE  WorkRecords SET StartTime = @startTime WHERE UserId = @userId AND WorkDate = @workDate
+                    "
+                    command.Parameters.AddWithValue("@userId", userId)
+                    command.Parameters.AddWithValue("@workDate", workDate)
+                    command.Parameters.AddWithValue("@startTime", clockTime)
+                End If
+                If (count > 0 AndAlso clockType = "OUT") Then
+                    command.CommandText = "
+                        UPDATE  WorkRecords SET EndTime = @endTime WHERE UserId = @userId AND WorkDate = @workDate
+                    "
+                    command.Parameters.AddWithValue("@userId", userId)
+                    command.Parameters.AddWithValue("@workDate", workDate)
+                    command.Parameters.AddWithValue("@endTime", clockTime)
+                End If
+                Try
+                    command.ExecuteNonQuery()
+                    Return Results.Json(New With {Key .message = "打刻が完了しました。"})
+                Catch ex As Exception
+                    Return Results.BadRequest(New With {Key .message = "失敗姉妹sた。" & ex.Message})
+                End Try
+            End Using
         End Function)
 
         app.MapGet("/api/work-records/export-csv", Function(userId As Integer, yearMonth As String, context As HttpContext, service As WorkRecordService) As IResult
