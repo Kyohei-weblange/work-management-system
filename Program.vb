@@ -5,93 +5,6 @@ Imports Microsoft.Data.Sqlite
 Imports Microsoft.AspNetCore.Http
 Imports BCrypt.Net
 
-Public Class LoginRequest
-    Public Property UserName As String
-    Public Property Password As String
-End Class
-
-Public Class ConstructionDto
-    Public Property ConstructionId As Integer
-    Public Property ConstructionCode As String
-    Public Property ConstructionName As String
-    Public Property TotalHours As Double
-    Public Property OvertimeHours As Double
-End Class
-
-Public Class WorkRecordRequest
-    Public Property UserId As Integer
-    Public Property WorkDate As String
-    Public Property StartTime As String
-    Public Property EndTime As String
-    Public Property OvertimeHours As Double
-    Public Property ConstructionId As Integer
-    Public Property Remarks As String
-End Class
-
-Public Class CopyPrevious
-    Public Property UserId As Integer
-    Public Property TargetYearMonth As String
-End Class
-
-Public Class WorkRecordDetailDto
-    Public Property WorkDate As String
-    Public Property StartTime As String
-    Public Property EndTime As String
-    Public Property OvertimeHours As Double
-    Public Property ConstructionCode As String
-    Public Property ConstructionName As String
-    Public Property Note As String
-End Class
-
-Public Class ClockInOut
-    Public Property UserId As Integer
-    Public Property ClockType As String
-    Public Property Timestamp As String
-End Class
-
-Public Class WorkRecordService
-    Private ReadOnly _connectionString As String
-    Public Sub New(connectionString As String)
-        _connectionString = connectionString
-    End Sub
-    Public Function GetMonthlyRecords(userId As Integer, yearMonth As String) As List(Of WorkRecordDetailDto)
-    Dim yearMonthDate As String = yearMonth & "%"
-    Dim result As New List(Of WorkRecordDetailDto)()
-    Using connection As New SqliteConnection(_connectionString)
-        connection.Open()
-        Dim command = connection.CreateCommand()
-        command.CommandText = "
-            SELECT
-                WorkDate,
-                StartTime,
-                EndTime,
-                OvertimeHours,
-                ConstructionCode,
-                ConstructionName
-            FROM
-                WorkRecords LEFT JOIN ConstructionNumbers ON WorkRecords.ConstructionId = ConstructionNumbers.ConstructionId
-            WHERE
-                WorkRecords.UserId = @userId AND WorkRecords.WorkDate LIKE @yearMonthDate ORDER BY WorkRecords.WorkDate ASC
-        "
-        command.Parameters.AddWithValue("@userId", userId)
-        command.Parameters.AddWithValue("@yearMonthDate", yearMonthDate)
-        Using reader = command.ExecuteReader()
-            While reader.Read()
-                result.Add(New WorkRecordDetailDto With {
-                    .WorkDate  = reader.GetString(0),
-                    .StartTime = reader.GetString(1),
-                    .EndTime = reader.GetString(2),
-                    .OvertimeHours = reader.GetDouble(3),
-                    .ConstructionCode = If(reader.IsDBNull(4), "", reader.GetString(4)),
-                    .ConstructionName = If(reader.IsDBNull(5), "", reader.GetString(5))
-                })
-            End While
-        End Using
-    End Using
-    Return result
-    End Function
-End Class
-
 Module Program
     Sub Main(args As String())
 
@@ -104,7 +17,6 @@ Module Program
 
         app.UseDefaultFiles()
         app.UseStaticFiles()
-
 
         ' DB初期化処理（起動時に1回だけ自動実行）
         Using connection As New SqliteConnection(connectionString)
@@ -170,27 +82,15 @@ Module Program
         End Function)
 
         app.MapPost("/api/login", Function(req As LoginRequest) As IResult
-            Dim username = req.UserName
-            Dim password = req.Password
-
-            Using connection As New SqliteConnection(connectionString)
-                connection.Open()
-                Dim command = connection.CreateCommand()
-                command.CommandText = "SELECT PasswordHash FROM Users WHERE UserName = @username"
-                command.Parameters.AddWithValue("@username", username)
-
-                Dim storedPasswordHash = command.ExecuteScalar()?.ToString()
-
-                Console.WriteLine($"[DEBUG] DBのハッシュ: {storedPasswordHash}")
-
-                If storedPasswordHash IsNot Nothing AndAlso BCrypt.Net.BCrypt.Verify(password, storedPasswordHash) Then
-                    Dim response = New With {Key .message = "ログイン成功", .userName = username}
-                    Return Results.Json(response)
-                Else
-                    Dim response = New With {Key .message = "ログイン失敗: ユーザー名またはパスワードが正しくありません。"}
-                    Return Results.Json(response, statusCode:=401)
-                End If
-            End Using
+            Dim userRepository = New UserRepository(connectionString)
+            Dim storedPasswordHash = userRepository.GetPasswordHashByUsername(req.UserName)
+            If storedPasswordHash IsNot Nothing AndAlso BCrypt.Net.BCrypt.Verify(req.Password, storedPasswordHash) Then
+                Dim response = New With {Key .message = "ログイン成功", .userName = req.UserName}
+                Return Results.Ok(response)
+            Else
+                Dim response = New With {Key .message = "ログイン失敗: ユーザー名またはパスワードが正しくありません。"}
+                Return Results.Json(response, statusCode:=401)
+            End If
         End Function)
 
         ' 工事番号一覧取得API
