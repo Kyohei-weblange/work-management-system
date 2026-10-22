@@ -124,43 +124,18 @@ Module Program
 
         ' 勤務データ登録API
         app.MapPost("/api/work-records", Function(req As WorkRecordRequest) As IResult
-            Using connection As New SqliteConnection(connectionString)
-                connection.Open()
-                Dim command = connection.CreateCommand()
-                command.CommandText = "
-                    INSERT INTO WorkRecords (
-                        UserId,
-                        WorkDate,
-                        StartTime,
-                        EndTime,
-                        OvertimeHours,
-                        ConstructionId,
-                        Remarks
-                    )
-                    VALUES (
-                        @userId,
-                        @workDate,
-                        @startTime,
-                        @endTime,
-                        @overtimeHours,
-                        @constructionId,
-                        @remarks
-                    )
-                "
-                command.Parameters.AddWithValue("@userId", req.UserId)
-                command.Parameters.AddWithValue("@workDate", req.WorkDate)
-                command.Parameters.AddWithValue("@startTime", req.StartTime)
-                command.Parameters.AddWithValue("@endTime", req.EndTime)
-                command.Parameters.AddWithValue("@overtimeHours", req.OvertimeHours)
-                command.Parameters.AddWithValue("@constructionId", req.ConstructionId)
-                command.Parameters.AddWithValue("@remarks", req.Remarks)
-                Try
-                    command.ExecuteNonQuery()
-                    Return Results.Json(New With {Key .message = "勤務データを登録しました。"})
-                Catch ex As Exception
-                    Return Results.BadRequest(New With {Key .message = "登録失敗:" & ex.Message})
-                End Try
-            End Using
+            Dim workRecordRepository = New WorkRecordRepository(connectionString)
+            Try
+                If workRecordRepository.SaveWorkRecord(req) Then
+                    Dim response = New With {Key .message = "勤務データを登録しました。"}
+                    Return Results.Ok(response)
+                Else
+                    Dim response = New With {Key .message = "登録失敗:"}
+                    Return Results.Json(response, statusCode:=400)
+                End If
+            Catch ex As Exception
+                Return Results.Json("障害が発生しました。", statusCode:=500)
+            End Try
         End Function)
 
         ' 前月の勤務内容をコピー
@@ -204,86 +179,17 @@ Module Program
         End Function)
 
         app.MapGet("/api/work-records/summary", Function(userId As Integer, yearMonth As String) As IResult
-            Dim totalWorkDays As Integer = 0
-            Dim totalOvertimeHours As Double = 0.0
-            Dim yearMonthPattern As String = yearMonth & "%"
-            Dim constructionHours As New Dictionary(Of Integer, Double)
-            Dim breakdownList As New List(Of ConstructionDto)
-            Dim constructionOvertimeHours As New Dictionary(Of Integer, Double)
-
-            Using connection As New SqliteConnection(connectionString)
-                connection.Open()
-                Dim command = connection.CreateCommand()
-                command.CommandText = "
-                    SELECT
-                        WorkDate,
-                        OvertimeHours,
-                        ConstructionId,
-                        StartTime,
-                        EndTime
-                    FROM
-                        WorkRecords
-                    WHERE
-                        UserId = @userId
-                    AND
-                        WorkDate LIKE @yearMonthPattern
-                "
-                command.Parameters.AddWithValue("@userId", userId)
-                command.Parameters.AddWithValue("@yearMonthPattern", yearMonthPattern)
-                Using reader = command.ExecuteReader()
-                    While reader.Read()
-                        totalWorkDays += 1
-                        totalOvertimeHours += reader.GetDouble(1)
-                        Dim overtime As Double = reader.GetDouble(1)
-                        Dim startTime = reader.GetString(3)
-                        Dim endTime = reader.GetString(4)
-                        If Not reader.IsDBNull(2) Then
-                            Dim constructionId As Integer = reader.GetInt32(2)
-                            Dim workTime As Double = (TimeSpan.Parse(endTime) - TimeSpan.Parse(startTime)).TotalHours - 1.0 + overtime
-                            If constructionHours.ContainsKey(constructionId) Then
-                                constructionHours(constructionId) += workTime
-                            Else
-                                constructionHours(constructionId) = workTime
-                            End If
-                            If constructionOvertimeHours.ContainsKey(constructionId) Then
-                                constructionOvertimeHours(constructionId) += overTime
-                            Else
-                                constructionOvertimeHours(constructionId) = overTime
-                            End If
-                        End If
-                    End While
-                End Using
-
-                command.Parameters.Clear()
-                command.CommandText = "
-                    SELECT ConstructionId, ConstructionCode, ConstructionName
-                    FROM ConstructionNumbers
-                    WHERE IsActive = 1
-                "
-                Using reader = command.ExecuteReader()
-                    While reader.Read()
-                        Dim cId As Integer = reader.GetInt32(0)
-                        Dim cCode As String = reader.GetString(1)
-                        Dim cName As String = reader.GetString(2)
-                        Dim hours As Double = 0.0
-                        Dim overtimeHours As Double = 0.0
-                        If constructionHours.ContainsKey(cId) Then
-                            hours = constructionHours(cId)
-                        End If
-                        If constructionOvertimeHours.ContainsKey(cId) Then
-                            overtimeHours = constructionOvertimeHours(cId)
-                        End If
-                        breakdownList.Add(New ConstructionDto With {
-                            .ConstructionId = cId,
-                            .ConstructionCode = cCode,
-                            .ConstructionName = cName,
-                            .TotalHours = hours,
-                            .OvertimeHours = overtimeHours
-                        })
-                    End While
-                End Using
-            End Using
-            Return Results.Json(New With { Key .totalWorkDays = totalWorkDays, Key .totalOvertimeHours = totalOvertimeHours, Key .constructionBreakdown = breakdownList})
+            Dim workRecordRepository = New WorkRecordRepository(connectionString)
+            Try
+                Dim breakdownList = workRecordRepository.GetWorkRecordsByMonth(userId, yearMonth)
+                If breakdownList IsNot Nothing Then
+                    Return Results.Json(New With{Key .constructionBreakdown = breakdownList})
+                Else
+                    Return Results.Json(New With {Key .message = "失敗しました。"})
+                End If
+            Catch ex As Exception
+                Return Results.Json(New With {Key .message = "障害が発生しました。" & ex.Message}, statusCode:=500)
+            End Try
         End Function)
 
         app.MapPost("/api/clock-in-out", Function(req As ClockInOut) As IResult
