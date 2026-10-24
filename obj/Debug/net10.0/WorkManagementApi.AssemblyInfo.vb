@@ -15,7 +15,7 @@ Imports System.Reflection
 <Assembly: System.Reflection.AssemblyCompanyAttribute("WorkManagementApi"),  _
  Assembly: System.Reflection.AssemblyConfigurationAttribute("Debug"),  _
  Assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0"),  _
- Assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b7a3ea9d43a146f69d381e90096d28e5be48efc3"),  _
+ Assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fa4a3d56dbb4626866643062c548f3e60fde5936"),  _
  Assembly: System.Reflection.AssemblyProductAttribute("WorkManagementApi"),  _
  Assembly: System.Reflection.AssemblyTitleAttribute("WorkManagementApi"),  _
  Assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")> 
